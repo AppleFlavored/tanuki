@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki.Html", "Tanuki.Html\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki", "Tanuki\Tanuki.csproj", "{DE38A0D9-1DFD-4088-9141-3012E62FFA70}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki.Dom", "Tanuki.Dom\Tanuki.Dom.csproj", "{1EFE67FB-C489-465E-86DA-BE2D196023B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{DE38A0D9-1DFD-4088-9141-3012E62FFA70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DE38A0D9-1DFD-4088-9141-3012E62FFA70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DE38A0D9-1DFD-4088-9141-3012E62FFA70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
