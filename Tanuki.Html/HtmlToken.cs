@@ -1,4 +1,5 @@
 using System.Text;
+using Attribute = Tanuki.Dom.Attribute;
 
 namespace Tanuki.Html;
 
@@ -174,8 +175,9 @@ public abstract class HtmlToken
 
     public sealed class Character : HtmlToken
     {
-        public char Data { get; init; }
-
+        public char Data { get; }
+        public bool IsWhitespace => Data is '\t' or '\r' or ' ' or '\u000a' or '\u000c';
+        
         public Character(char data)
         {
             Data = data;
