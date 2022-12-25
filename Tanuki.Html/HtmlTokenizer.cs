@@ -11,29 +11,30 @@ internal class HtmlTokenizer
     private HtmlState _state = HtmlState.Data;
     private HtmlState _returnState = HtmlState.Data;
     private HtmlToken? _currentToken;
+    private string _lastStartTagName;
     private int _position;
-    
-    //public bool HasNext => _queuedTokens.Count > 0 && _position < _source.Length;
+
     private bool EndOfFile => _position >= _source.Length;
-    
+
     internal HtmlTokenizer(string source)
     {
         _source = source;
     }
 
-    public HtmlToken Next()
+    internal HtmlToken? Next()
     {
         if (_queuedTokens.TryDequeue(out var token))
             return token;
 
         while (true)
         {
+            if (EndOfFile) return null;
             if (!ProcessToken()) continue;
-            return _queuedTokens.Dequeue();
+            return _queuedTokens.TryDequeue(out token) ? token : null;
         }
     }
 
-    public void SwitchState(HtmlState newState)
+    internal void SwitchState(HtmlState newState)
     {
         _state = newState;
     }
@@ -216,12 +217,144 @@ internal class HtmlTokenizer
                         _dataBuilder.Append(ch);
                         return false;
                 }
-            // TODO: HtmlState.RcDataLessThanSign
-            // TODO: HtmlState.RcDataEndTagOpen
-            // TODO: HtmlState.RcDataEndTagName
-            // TODO: HtmlState.RawtextLessThanSign
-            // TODO: HtmlState.RawtextEndTagOpen
-            // TODO: HtmlState.RawtextEndTagName
+            case HtmlState.RcDataLessThanSign:
+                if (ch == '/')
+                {
+                    _temporaryBuffer.Clear();
+                    _state = HtmlState.RcDataEndTagOpen;
+                    return false;
+                }
+                
+                _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                Reconsume(HtmlState.RcData);
+                return true;
+            case HtmlState.RcDataEndTagOpen:
+                if (char.IsAsciiLetter(ch))
+                {
+                    _currentToken = new HtmlToken.EndTag();
+                    Reconsume(HtmlState.RcDataEndTagName);
+                    return false;
+                }
+                
+                _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                Reconsume(HtmlState.RcData);
+                return true;
+            case HtmlState.RcDataEndTagName:
+                switch (ch)
+                {
+                    case '\t':
+                    case '\u000a': // Line Feed (LF)
+                    case '\u000c': // Form Feed (FF)
+                    case ' ':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.BeforeAttributeName;
+                            return false;
+                        }
+                        
+                        goto rcDataEndTagName_anythingElse;
+                    case '/':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.SelfClosingStartTag;
+                            return false;
+                        }
+                        
+                        goto rcDataEndTagName_anythingElse;
+                    case '>':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.Data;
+                            EmitTokenWithData();
+                            return true;
+                        }
+
+                        goto rcDataEndTagName_anythingElse;
+                    default:
+                        if (char.IsAsciiLetter(ch))
+                        {
+                            _dataBuilder.Append(char.ToLower(ch));
+                            _temporaryBuffer.Add(ch);
+                            return false;
+                        }
+
+                        rcDataEndTagName_anythingElse:
+                        _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                        _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                        EmitCharactersInTemporaryBuffer();
+                        Reconsume(HtmlState.RcData);
+                        return true;
+                }
+            case HtmlState.RawtextLessThanSign:
+                if (ch == '/')
+                {
+                    _temporaryBuffer.Clear();
+                    _state = HtmlState.RawtextEndTagOpen;
+                    return false;
+                }
+
+                _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                Reconsume(HtmlState.RawText);
+                return true;
+            case HtmlState.RawtextEndTagOpen:
+                if (char.IsAsciiLetter(ch))
+                {
+                    _currentToken = new HtmlToken.EndTag();
+                    Reconsume(HtmlState.RawtextEndTagName);
+                    return false;
+                }
+                
+                _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                Reconsume(HtmlState.RawText);
+                return true;
+            case HtmlState.RawtextEndTagName:
+                switch (ch)
+                {
+                    case '\t':
+                    case '\u000a': // Line Feed (LF)
+                    case '\u000c': // Form Feed (FF)
+                    case ' ':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.BeforeAttributeName;
+                            return false;
+                        }
+                        
+                        goto rawTextEndTagName_anythingElse;
+                    case '/':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.SelfClosingStartTag;
+                            return false;
+                        }
+                        
+                        goto rawTextEndTagName_anythingElse;
+                    case '>':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.Data;
+                            EmitTokenWithData();
+                            return true;
+                        }
+
+                        goto rawTextEndTagName_anythingElse;
+                    default:
+                        if (char.IsAsciiLetter(ch))
+                        {
+                            _dataBuilder.Append(char.ToLower(ch));
+                            _temporaryBuffer.Add(ch);
+                            return false;
+                        }
+
+                        rawTextEndTagName_anythingElse:
+                        _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                        _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                        EmitCharactersInTemporaryBuffer();
+                        Reconsume(HtmlState.RawText);
+                        return true;
+                }
             case HtmlState.ScriptDataLessThanSign:
                 switch (ch)
                 {
@@ -239,8 +372,64 @@ internal class HtmlTokenizer
                         Reconsume(HtmlState.ScriptData);
                         return true;
                 }
-            // TODO: HtmlState.ScriptDataEndTagOpen
-            // TODO: HtmlState.ScriptDataEndTagName
+            case HtmlState.ScriptDataEndTagOpen:
+                if (char.IsAsciiLetter(ch))
+                {
+                    _currentToken = new HtmlToken.EndTag();
+                    Reconsume(HtmlState.ScriptDataEndTagName);
+                    return false;
+                }
+                
+                _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                Reconsume(HtmlState.ScriptData);
+                return true;
+            case HtmlState.ScriptDataEndTagName:
+                switch (ch)
+                {
+                    case '\t':
+                    case '\u000a': // Line Feed (LF)
+                    case '\u000c': // Form Feed (FF)
+                    case ' ':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.BeforeAttributeName;
+                            return false;
+                        }
+                        
+                        goto scriptDataEndTagName_anythingElse;
+                    case '/':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.SelfClosingStartTag;
+                            return false;
+                        }
+                        
+                        goto scriptDataEndTagName_anythingElse;
+                    case '>':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.Data;
+                            EmitTokenWithData();
+                            return true;
+                        }
+
+                        goto scriptDataEndTagName_anythingElse;
+                    default:
+                        if (char.IsAsciiLetter(ch))
+                        {
+                            _dataBuilder.Append(char.ToLower(ch));
+                            _temporaryBuffer.Add(ch);
+                            return false;
+                        }
+
+                        scriptDataEndTagName_anythingElse:
+                        _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                        _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                        EmitCharactersInTemporaryBuffer();
+                        Reconsume(HtmlState.ScriptData);
+                        return true;
+                }
             case HtmlState.ScriptDataEscapeStart:
                 if (ch == '-')
                 {
@@ -248,7 +437,7 @@ internal class HtmlTokenizer
                     _queuedTokens.Enqueue(new HtmlToken.Character('-'));
                     return true;
                 }
-                
+
                 Reconsume(HtmlState.ScriptData);
                 return false;
             case HtmlState.ScriptDataEscapeStartDash:
@@ -258,7 +447,7 @@ internal class HtmlTokenizer
                     _queuedTokens.Enqueue(new HtmlToken.Character('-'));
                     return true;
                 }
-                
+
                 Reconsume(HtmlState.ScriptData);
                 return false;
             case HtmlState.ScriptDataEscaped:
@@ -359,13 +548,83 @@ internal class HtmlTokenizer
                     Reconsume(HtmlState.ScriptDataEscapedEndTagName);
                     return false;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character('<'));
                 _queuedTokens.Enqueue(new HtmlToken.Character('/'));
                 Reconsume(HtmlState.ScriptDataEscaped);
                 return true;
-            // TODO: HtmlState.ScriptDataEscapedEndTagName
-            // TODO: HtmlState.ScriptDataDoubleEscapeStart
+            case HtmlState.ScriptDataEscapedEndTagName:
+                switch (ch)
+                {
+                    case '\t':
+                    case '\u000a': // Line Feed (LF)
+                    case '\u000c': // Form Feed (FF)
+                    case ' ':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.BeforeAttributeName;
+                            return false;
+                        }
+
+                        goto scriptDataEscapedEndTagName_anythingElse;
+                    case '/':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.SelfClosingStartTag;
+                            return false;
+                        }
+
+                        goto scriptDataEscapedEndTagName_anythingElse;
+                    case '>':
+                        if (_lastStartTagName == _dataBuilder.ToString())
+                        {
+                            _state = HtmlState.Data;
+                            EmitTokenWithData();
+                            return false;
+                        }
+
+                        goto scriptDataEscapedEndTagName_anythingElse;
+                    default:
+                        if (char.IsAsciiLetter(ch))
+                        {
+                            _dataBuilder.Append(char.ToLower(ch));
+                            _temporaryBuffer.Add(ch);
+                            return false;
+                        }
+                        
+                        scriptDataEscapedEndTagName_anythingElse:
+                        _queuedTokens.Enqueue(new HtmlToken.Character('<'));
+                        _queuedTokens.Enqueue(new HtmlToken.Character('/'));
+                        EmitCharactersInTemporaryBuffer();
+                        return true;
+                }
+            case HtmlState.ScriptDataDoubleEscapeStart:
+                switch (ch)
+                {
+                    case '\t':
+                    case '\u000a': // Line Feed (LF)
+                    case '\u000c': // Form Feed (FF)
+                    case ' ':
+                    case '/':
+                    case '>':
+                        if (CompareTemporaryBuffer("script"))
+                            _state = HtmlState.ScriptDataDoubleEscaped;
+                        else
+                            _state = HtmlState.ScriptDataEscaped;
+                        
+                        _queuedTokens.Enqueue(new HtmlToken.Character(ch));
+                        return true;
+                    default:
+                        if (char.IsAsciiLetter(ch))
+                        {
+                            _temporaryBuffer.Add(char.ToLower(ch));
+                            _queuedTokens.Enqueue(new HtmlToken.Character(ch));
+                            return true;
+                        }
+
+                        Reconsume(HtmlState.ScriptDataEscaped);
+                        return false;
+                }
             case HtmlState.ScriptDataDoubleEscaped:
                 switch (ch)
                 {
@@ -449,7 +708,7 @@ internal class HtmlTokenizer
                     _queuedTokens.Enqueue(new HtmlToken.Character('/'));
                     return true;
                 }
-                
+
                 Reconsume(HtmlState.ScriptDataDoubleEscaped);
                 return false;
             case HtmlState.ScriptDataDoubleEscapeEnd:
@@ -473,7 +732,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.Character(ch));
                             return true;
                         }
-                        
+
                         Reconsume(HtmlState.ScriptDataDoubleEscaped);
                         return false;
                 }
@@ -527,7 +786,7 @@ internal class HtmlTokenizer
                             Reconsume(HtmlState.AfterAttributeName);
                             return false;
                         }
-                        
+
                         _currentToken!.AppendAttributeName(char.ToLower(ch));
                         return false;
                 }
@@ -680,7 +939,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return true;
                         }
-                        
+
                         Reconsume(HtmlState.BeforeAttributeName);
                         return false;
                 }
@@ -934,7 +1193,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return true;
                         }
-                        
+
                         Reconsume(HtmlState.BeforeDoctypeName);
                         return false;
                 }
@@ -1029,7 +1288,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.AfterDoctypeSystemKeyword;
                             return false;
                         }
-                        
+
                         _currentToken!.SetForceQuirks(true);
                         Reconsume(HtmlState.BogusDoctype);
                         return false;
@@ -1062,7 +1321,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return true;
                         }
-                        
+
                         _currentToken!.SetForceQuirks(true);
                         Reconsume(HtmlState.BogusDoctype);
                         return false;
@@ -1094,7 +1353,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return true;
                         }
-                        
+
                         _currentToken!.SetForceQuirks(true);
                         Reconsume(HtmlState.BogusDoctype);
                         return false;
@@ -1178,7 +1437,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return false;
                         }
-                        
+
                         _currentToken!.SetForceQuirks(true);
                         Reconsume(HtmlState.BogusDoctype);
                         return false;
@@ -1274,7 +1533,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return true;
                         }
-                        
+
                         _currentToken!.SetForceQuirks(true);
                         Reconsume(HtmlState.BogusDoctype);
                         return false;
@@ -1351,7 +1610,7 @@ internal class HtmlTokenizer
                             _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                             return true;
                         }
-                        
+
                         Reconsume(HtmlState.BogusDoctype);
                         return false;
                 }
@@ -1366,14 +1625,53 @@ internal class HtmlTokenizer
                         return false;
                     default:
                         if (!EndOfFile) return false;
-                        
+
                         EmitTokenWithData();
                         _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                         return true;
                 }
-            // TODO: HtmlState.CDataSection
-            // TODO: HtmlState.CDataSectionBracket
-            // TODO: HtmlState.CDataSectionEnd
+            case HtmlState.CDataSection:
+                if (ch == ']')
+                {
+                    _state = HtmlState.CDataSectionBracket;
+                    return false;
+                }
+
+                if (EndOfFile)
+                {
+                    _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
+                    return true;
+                }
+                
+                _queuedTokens.Enqueue(new HtmlToken.Character(ch));
+                return true;
+            case HtmlState.CDataSectionBracket:
+                if (ch == ']')
+                {
+                    _state = HtmlState.CDataSectionEnd;
+                    return false;
+                }
+
+                _queuedTokens.Enqueue(new HtmlToken.Character(']'));
+                Reconsume(HtmlState.CDataSection);
+                return true;
+            case HtmlState.CDataSectionEnd:
+                if (ch == ']')
+                {
+                    _queuedTokens.Enqueue(new HtmlToken.Character(']'));
+                    return true;
+                }
+
+                if (ch == '>')
+                {
+                    _state = HtmlState.Data;
+                    return false;
+                }
+                
+                _queuedTokens.Enqueue(new HtmlToken.Character(']'));
+                _queuedTokens.Enqueue(new HtmlToken.Character(']'));
+                Reconsume(HtmlState.CDataSection);
+                return true;
             case HtmlState.CharacterReference:
                 _temporaryBuffer.Clear();
 
@@ -1413,6 +1711,12 @@ internal class HtmlTokenizer
         return next;
     }
 
+    private void EmitCharactersInTemporaryBuffer()
+    {
+        foreach (var c in _temporaryBuffer)
+            _queuedTokens.Enqueue(new HtmlToken.Character(c));
+    }
+
     private void FlushCharactersAsCharacterReference()
     {
         foreach (var c in _temporaryBuffer)
@@ -1429,7 +1733,6 @@ internal class HtmlTokenizer
                 _queuedTokens.Enqueue(new HtmlToken.Character(c));
             }
         }
-        
     }
 
     private bool PeekAscii(string str, int offset = 0)
@@ -1463,6 +1766,10 @@ internal class HtmlTokenizer
 
     private void EmitTokenWithData()
     {
+        // For finding the appropriate end tag.
+        if (_currentToken is HtmlToken.StartTag)
+            _lastStartTagName = _dataBuilder.ToString();
+        
         _currentToken!.SetData(_dataBuilder);
         _queuedTokens.Enqueue(_currentToken);
         _dataBuilder.Clear();
