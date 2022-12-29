@@ -1,7 +1,5 @@
-﻿// using Gtk;
-
+﻿using Gtk;
 using Tanuki;
-using Tanuki.Dom;
 using Tanuki.Html;
 
 // Application.Init();
@@ -15,11 +13,7 @@ using Tanuki.Html;
 // window.Show();
 // Application.Run();
 
-var client = new HttpClient();
-var response = await client.GetAsync("https://example.com/");
-var content = await response.Content.ReadAsStringAsync();
-
-var parser = new HtmlParser("<!DOCTYPE html><html><head><title>Hello</title><style>Stuff</style></head><body>This is text.</body></html>", ParsingFlags.None);
+var parser = new HtmlParser("<!DOCTYPE html><html><head><title>Document</title></head><body><h1>Hello!</h1><p>This is text.</p><p>h</p></body></html>", ParsingFlags.None);
 var document = parser.Parse();
 
 document.Print();
