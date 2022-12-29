@@ -13,7 +13,9 @@ using Tanuki.Html;
 // window.Show();
 // Application.Run();
 
-var parser = new HtmlParser("<!DOCTYPE html><html><head><title>Document</title></head><body><h1>Hello!</h1><p>This is text.</p><p>h</p></body></html>", ParsingFlags.None);
+var parser = new HtmlParser(
+    "<!DOCTYPE html><html><head><title>Document</title></head><body><h1>Hello!</h1><p>This is text.</p><p>h</p></body></html>",
+    ParsingFlags.None);
 var document = parser.Parse();
 
 document.Print();
