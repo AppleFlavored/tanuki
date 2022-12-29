@@ -1,3 +1,4 @@
+using System.Text;
 using Tanuki.Dom;
 
 namespace Tanuki;
@@ -15,6 +16,15 @@ public static class NodeExtensions
         Console.Write($"{node.Name} ");
         switch (node)
         {
+            case Element elem:
+                if (elem.Attributes.Count == 0) break;
+                var attrDisplay = "";
+                foreach (var attr in elem.Attributes)
+                {
+                    attrDisplay += $"{attr.Name}=\"{attr.Value}\" ";
+                }
+                Console.Write($"[{attrDisplay.Trim()}]");
+                break;
             case Text text:
                 Console.Write($"\"{text.Data}\"");
                 break;
