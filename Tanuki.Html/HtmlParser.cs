@@ -1,4 +1,5 @@
-﻿using Tanuki.Dom;
+﻿using System.Diagnostics;
+using Tanuki.Dom;
 
 namespace Tanuki.Html;
 
@@ -13,6 +14,22 @@ public class HtmlParser
     private FramesetOk _framesetOk = FramesetOk.Ok;
     private Element? _headElement;
     private Element? _formElement;
+
+    private static readonly List<string> SpecialElements = new()
+    {
+        "address", "applet", "area", "article", "aside", "base", "basefont", "bgsound", "blockquote", "body", "br",
+        "button", "caption", "center", "col", "colgroup", "dd", "details", "dir", "div", "dl", "dt", "embed",
+        "fieldset", "figcaption", "figure", "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6",
+        "head", "header", "hgroup", "hr", "html", "iframe", "img", "input", "keygen", "li", "link", "listing", "main",
+        "marquee", "menu", "meta", "nav", "noembed", "noframes", "noscript", "object", "ol", "p", "param", "plaintext",
+        "pre", "script", "section", "select", "source", "style", "summary", "table", "tbody", "td", "template",
+        "textarea", "tfoot", "th", "thead", "title", "tr", "track", "ul", "wbr", "xmp"
+    };
+
+    private static readonly List<string> FormattingElements = new()
+    {
+        "a", "b", "big", "code", "em", "font", "i", "nobr", "s", "small", "strike", "strong", "tt", "u"
+    };
 
     private static readonly List<string> BaseScopeList = new() { "applet", "caption", "html", "table", "td", "th", "marquee", "object", "template" };
     private static readonly List<string> EndTagList = new() { "dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc" };
@@ -808,7 +825,10 @@ public class HtmlParser
                     _openElements.Pop();
                     break;
                 }
-                // TODO: Check if node is in the special category; ignore.
+
+                if (SpecialElements.Contains(CurrentNode.Name))
+                    break;
+                
                 _openElements.Pop();
             }
 
