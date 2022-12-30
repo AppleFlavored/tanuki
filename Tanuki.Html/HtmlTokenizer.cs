@@ -142,6 +142,7 @@ internal class HtmlTokenizer
                         if (char.IsAsciiLetter(ch))
                         {
                             _currentToken = new HtmlToken.StartTag();
+                            _dataBuilder.Clear();
                             Reconsume(HtmlState.TagName);
                             return false;
                         }
@@ -161,6 +162,7 @@ internal class HtmlTokenizer
                 if (char.IsAsciiLetter(ch))
                 {
                     _currentToken = new HtmlToken.EndTag();
+                    _dataBuilder.Clear();
                     Reconsume(HtmlState.TagName);
                     return false;
                 }
@@ -232,6 +234,7 @@ internal class HtmlTokenizer
                 if (char.IsAsciiLetter(ch))
                 {
                     _currentToken = new HtmlToken.EndTag();
+                    _dataBuilder.Clear();
                     Reconsume(HtmlState.RcDataEndTagName);
                     return false;
                 }
@@ -263,6 +266,7 @@ internal class HtmlTokenizer
                         
                         goto rcDataEndTagName_anythingElse;
                     case '>':
+                        Console.WriteLine(_dataBuilder.ToString());
                         if (_lastStartTagName == _dataBuilder.ToString())
                         {
                             _state = HtmlState.Data;
@@ -301,6 +305,7 @@ internal class HtmlTokenizer
                 if (char.IsAsciiLetter(ch))
                 {
                     _currentToken = new HtmlToken.EndTag();
+                    _dataBuilder.Clear();
                     Reconsume(HtmlState.RawtextEndTagName);
                     return false;
                 }
@@ -376,6 +381,7 @@ internal class HtmlTokenizer
                 if (char.IsAsciiLetter(ch))
                 {
                     _currentToken = new HtmlToken.EndTag();
+                    _dataBuilder.Clear();
                     Reconsume(HtmlState.ScriptDataEndTagName);
                     return false;
                 }
@@ -545,6 +551,7 @@ internal class HtmlTokenizer
                 if (char.IsAsciiLetter(ch))
                 {
                     _currentToken = new HtmlToken.EndTag();
+                    _dataBuilder.Clear();
                     Reconsume(HtmlState.ScriptDataEscapedEndTagName);
                     return false;
                 }
@@ -607,11 +614,9 @@ internal class HtmlTokenizer
                     case ' ':
                     case '/':
                     case '>':
-                        if (CompareTemporaryBuffer("script"))
-                            _state = HtmlState.ScriptDataDoubleEscaped;
-                        else
-                            _state = HtmlState.ScriptDataEscaped;
-                        
+                        _state = CompareTemporaryBuffer("script")
+                            ? HtmlState.ScriptDataDoubleEscaped
+                            : HtmlState.ScriptDataEscaped;
                         _queuedTokens.Enqueue(new HtmlToken.Character(ch));
                         return true;
                     default:
@@ -989,13 +994,13 @@ internal class HtmlTokenizer
                     return false;
                 }
 
-                if (PeekAscii("DOCTYPE", -1))
+                if (PeekAscii("DOCTYPE"))
                 {
                     _state = HtmlState.Doctype;
                     return false;
                 }
 
-                if (Peek("[CDATA[", -1))
+                if (Peek("[CDATA["))
                 {
                     // TODO: Get adjusted current node from parser.
                     _currentToken = new HtmlToken.Comment();
@@ -1277,13 +1282,13 @@ internal class HtmlTokenizer
                             return true;
                         }
 
-                        if (PeekAscii("PUBLIC", -1))
+                        if (PeekAscii("PUBLIC"))
                         {
                             _state = HtmlState.AfterDoctypePublicKeyword;
                             return false;
                         }
 
-                        if (PeekAscii("SYSTEM", -1))
+                        if (PeekAscii("SYSTEM"))
                         {
                             _state = HtmlState.AfterDoctypeSystemKeyword;
                             return false;
@@ -1714,7 +1719,10 @@ internal class HtmlTokenizer
     private void EmitCharactersInTemporaryBuffer()
     {
         foreach (var c in _temporaryBuffer)
+        {
             _queuedTokens.Enqueue(new HtmlToken.Character(c));
+        }
+        _temporaryBuffer.Clear();
     }
 
     private void FlushCharactersAsCharacterReference()
@@ -1735,15 +1743,15 @@ internal class HtmlTokenizer
         }
     }
 
-    private bool PeekAscii(string str, int offset = 0)
+    private bool PeekAscii(string str)
     {
         str = str.ToLower();
         for (var i = 0; i < str.Length; i++)
         {
-            if (str[i] != char.ToLower(_source[_position + offset + i]))
+            if (str[i] != char.ToLower(_source[_position - 1 + i]))
                 return false;
         }
-        _position += str.Length + offset;
+        _position += str.Length - 1;
         return true;
     }
 
