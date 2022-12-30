@@ -75,8 +75,8 @@ public class HtmlParser
                 InsertionMode.AfterBody => HandleAfterBody(token),
                 InsertionMode.InFrameset => HandleInFrameset(token),
                 InsertionMode.AfterFrameset => HandleAfterFrameset(token),
-                InsertionMode.AfterAfterBody => HandleAfterBody(token),
-                InsertionMode.AfterAfterFrameset => HandleAfterFrameset(token),
+                InsertionMode.AfterAfterBody => HandleAfterAfterBody(token),
+                InsertionMode.AfterAfterFrameset => HandleAfterAfterFrameset(token),
                 _ => throw new Exception("If this exception was thrown, something went really wrong.")
             };
 
