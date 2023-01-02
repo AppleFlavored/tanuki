@@ -7,7 +7,7 @@ using Tanuki.Html;
 // var app = new Application("me.appleflavored.tanuki", GLib.ApplicationFlags.None);
 // app.Register(GLib.Cancellable.Current);
 //
-// var window = new MainWindow();
+// var window = new BrowserWindow();
 // app.AddWindow(window);
 //
 // window.Show();
