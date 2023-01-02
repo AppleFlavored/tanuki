@@ -266,7 +266,6 @@ internal class HtmlTokenizer
                         
                         goto rcDataEndTagName_anythingElse;
                     case '>':
-                        Console.WriteLine(_dataBuilder.ToString());
                         if (_lastStartTagName == _dataBuilder.ToString())
                         {
                             _state = HtmlState.Data;

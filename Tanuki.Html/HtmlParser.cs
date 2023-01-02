@@ -51,7 +51,6 @@ public class HtmlParser
             if (token is null) break;
 
             reprocess:
-            Console.WriteLine(_insertionMode);
             var result = _insertionMode switch
             {
                 InsertionMode.Initial => HandleInitial(token),
