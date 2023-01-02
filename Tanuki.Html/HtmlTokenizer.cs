@@ -1,4 +1,5 @@
 using System.Text;
+using static Tanuki.Html.CharacterReferences;
 
 namespace Tanuki.Html;
 
@@ -11,7 +12,8 @@ internal class HtmlTokenizer
     private HtmlState _state = HtmlState.Data;
     private HtmlState _returnState = HtmlState.Data;
     private HtmlToken? _currentToken;
-    private string _lastStartTagName;
+    private string _lastStartTagName = "";
+    private int _charReferenceCode;
     private int _position;
 
     private bool EndOfFile => _position >= _source.Length;
@@ -226,7 +228,7 @@ internal class HtmlTokenizer
                     _state = HtmlState.RcDataEndTagOpen;
                     return false;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character('<'));
                 Reconsume(HtmlState.RcData);
                 return true;
@@ -238,7 +240,7 @@ internal class HtmlTokenizer
                     Reconsume(HtmlState.RcDataEndTagName);
                     return false;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character('<'));
                 _queuedTokens.Enqueue(new HtmlToken.Character('/'));
                 Reconsume(HtmlState.RcData);
@@ -255,7 +257,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.BeforeAttributeName;
                             return false;
                         }
-                        
+
                         goto rcDataEndTagName_anythingElse;
                     case '/':
                         if (_lastStartTagName == _dataBuilder.ToString())
@@ -263,7 +265,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.SelfClosingStartTag;
                             return false;
                         }
-                        
+
                         goto rcDataEndTagName_anythingElse;
                     case '>':
                         if (_lastStartTagName == _dataBuilder.ToString())
@@ -308,7 +310,7 @@ internal class HtmlTokenizer
                     Reconsume(HtmlState.RawtextEndTagName);
                     return false;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character('<'));
                 _queuedTokens.Enqueue(new HtmlToken.Character('/'));
                 Reconsume(HtmlState.RawText);
@@ -325,7 +327,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.BeforeAttributeName;
                             return false;
                         }
-                        
+
                         goto rawTextEndTagName_anythingElse;
                     case '/':
                         if (_lastStartTagName == _dataBuilder.ToString())
@@ -333,7 +335,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.SelfClosingStartTag;
                             return false;
                         }
-                        
+
                         goto rawTextEndTagName_anythingElse;
                     case '>':
                         if (_lastStartTagName == _dataBuilder.ToString())
@@ -384,7 +386,7 @@ internal class HtmlTokenizer
                     Reconsume(HtmlState.ScriptDataEndTagName);
                     return false;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character('<'));
                 _queuedTokens.Enqueue(new HtmlToken.Character('/'));
                 Reconsume(HtmlState.ScriptData);
@@ -401,7 +403,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.BeforeAttributeName;
                             return false;
                         }
-                        
+
                         goto scriptDataEndTagName_anythingElse;
                     case '/':
                         if (_lastStartTagName == _dataBuilder.ToString())
@@ -409,7 +411,7 @@ internal class HtmlTokenizer
                             _state = HtmlState.SelfClosingStartTag;
                             return false;
                         }
-                        
+
                         goto scriptDataEndTagName_anythingElse;
                     case '>':
                         if (_lastStartTagName == _dataBuilder.ToString())
@@ -597,7 +599,7 @@ internal class HtmlTokenizer
                             _temporaryBuffer.Add(ch);
                             return false;
                         }
-                        
+
                         scriptDataEscapedEndTagName_anythingElse:
                         _queuedTokens.Enqueue(new HtmlToken.Character('<'));
                         _queuedTokens.Enqueue(new HtmlToken.Character('/'));
@@ -1646,7 +1648,7 @@ internal class HtmlTokenizer
                     _queuedTokens.Enqueue(new HtmlToken.EndOfFile());
                     return true;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character(ch));
                 return true;
             case HtmlState.CDataSectionBracket:
@@ -1671,13 +1673,14 @@ internal class HtmlTokenizer
                     _state = HtmlState.Data;
                     return false;
                 }
-                
+
                 _queuedTokens.Enqueue(new HtmlToken.Character(']'));
                 _queuedTokens.Enqueue(new HtmlToken.Character(']'));
                 Reconsume(HtmlState.CDataSection);
                 return true;
             case HtmlState.CharacterReference:
                 _temporaryBuffer.Clear();
+                _temporaryBuffer.Add('&');
 
                 if (char.IsAsciiLetterOrDigit(ch))
                 {
@@ -1694,15 +1697,140 @@ internal class HtmlTokenizer
 
                 FlushCharactersAsCharacterReference();
                 Reconsume(_returnState);
+                return true;
+            case HtmlState.NamedCharacterReference:
+                var found = FindCharacterReferenceEntity(_source[_position..], out var match);
+                if (found)
+                {
+                    _temporaryBuffer.AddRange(match);
+                    var consumedAsPartOfAttribute = _returnState is HtmlState.AttributeValueDoubleQuoted
+                        or HtmlState.AttributeValueSingleQuoted
+                        or HtmlState.AttributeValueUnquoted;
+                    if (consumedAsPartOfAttribute && match.Last() != ';' &&
+                        (_source[_position] == '=' || char.IsAsciiLetterOrDigit(_source[_position])))
+                    {
+                        FlushCharactersAsCharacterReference();
+                        _state = _returnState;
+                        return true;
+                    }
+                    
+                    _temporaryBuffer.Clear();
+                    _temporaryBuffer.AddRange(match);
+                    FlushCharactersAsCharacterReference();
+                    _state = _returnState;
+                    return true;
+                }
+                
+                FlushCharactersAsCharacterReference();
+                _state = HtmlState.AmbiguousAmpersand;
+                return true;
+            case HtmlState.AmbiguousAmpersand:
+                if (char.IsAsciiLetterOrDigit(ch))
+                {
+                    if (_returnState is HtmlState.AttributeValueDoubleQuoted or HtmlState.AttributeValueSingleQuoted
+                        or HtmlState.AttributeValueUnquoted)
+                    {
+                        _currentToken!.AppendAttributeValue(ch);
+                        return false;
+                    }
+
+                    _queuedTokens.Enqueue(new HtmlToken.Character(ch));
+                    return true;
+                }
+
+                // Also handles SEMICOLON (;) case.
+                Reconsume(_returnState);
                 return false;
-            // TODO: HtmlState.NamedCharacterReference
-            // TODO: HtmlState.AmbiguousAmpersand
-            // TODO: HtmlState.NumericCharacterReference
-            // TODO: HtmlState.HexadecimalCharacterReferenceStart
-            // TODO: HtmlState.DecimalCharacterReferenceStart
-            // TODO: HtmlState.HexadecimalCharacterReference
-            // TODO: HtmlState.DecimalCharacterReference
-            // TODO: HtmlState.NumericCharacterReferenceEnd
+            case HtmlState.NumericCharacterReference:
+                _charReferenceCode = 0;
+                if (ch is 'x' or 'X')
+                {
+                    _temporaryBuffer.Add(ch);
+                    _state = HtmlState.HexadecimalCharacterReferenceStart;
+                    return false;
+                }
+
+                Reconsume(HtmlState.DecimalCharacterReferenceStart);
+                return false;
+            case HtmlState.HexadecimalCharacterReferenceStart:
+                if (char.IsAsciiHexDigit(ch))
+                {
+                    Reconsume(HtmlState.HexadecimalCharacterReference);
+                    return false;
+                }
+
+                FlushCharactersAsCharacterReference();
+                Reconsume(_returnState);
+                return true;
+            case HtmlState.DecimalCharacterReferenceStart:
+                if (char.IsAsciiDigit(ch))
+                {
+                    Reconsume(HtmlState.DecimalCharacterReference);
+                    return false;
+                }
+
+                FlushCharactersAsCharacterReference();
+                Reconsume(_returnState);
+                return true;
+            case HtmlState.HexadecimalCharacterReference:
+                if (char.IsAsciiDigit(ch))
+                {
+                    _charReferenceCode *= 16;
+                    _charReferenceCode += ch - 0x0030;
+                    return false;
+                }
+
+                if (char.IsAsciiHexDigitUpper(ch))
+                {
+                    _charReferenceCode *= 16;
+                    _charReferenceCode += ch - 0x0037;
+                    return false;
+                }
+
+                if (char.IsAsciiHexDigitLower(ch))
+                {
+                    _charReferenceCode *= 16;
+                    _charReferenceCode += ch - 0x0057;
+                    return false;
+                }
+
+                if (ch == ';')
+                {
+                    _state = HtmlState.NumericCharacterReferenceEnd;
+                    return false;
+                }
+                
+                Reconsume(HtmlState.NumericCharacterReferenceEnd);
+                return false;
+            case HtmlState.DecimalCharacterReference:
+                if (char.IsAsciiDigit(ch))
+                {
+                    _charReferenceCode *= 10;
+                    _charReferenceCode += ch - 0x0030;
+                    return false;
+                }
+
+                if (ch == ';')
+                {
+                    _state = HtmlState.NumericCharacterReferenceEnd;
+                    return false;
+                }
+                
+                Reconsume(HtmlState.NumericCharacterReferenceEnd);
+                return false;
+            case HtmlState.NumericCharacterReferenceEnd:
+                if (_charReferenceCode is 0x00 or >= 0x10ffff or >= 0xd800 and <= 0xdfff)
+                    _charReferenceCode = 0xfffd;
+
+                _temporaryBuffer.Clear();
+                var exists = NumericCharacterReferenceTable.TryGetValue(_charReferenceCode, out var replacement);
+                if (exists)
+                {
+                    _temporaryBuffer.Add(replacement);
+                    FlushCharactersAsCharacterReference();
+                }
+                _state = _returnState;
+                return true;
             default:
                 throw new Exception($"Tokenizer reached unhandled state: {_state}");
         }
