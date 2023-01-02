@@ -1699,9 +1699,10 @@ internal class HtmlTokenizer
                 Reconsume(_returnState);
                 return true;
             case HtmlState.NamedCharacterReference:
-                var found = FindCharacterReferenceEntity(_source[_position..], out var match);
+                var found = FindCharacterReferenceEntity(_source[(_position - 1)..], out var match, out var length);
                 if (found)
                 {
+                    _position += length - 1;
                     _temporaryBuffer.AddRange(match);
                     var consumedAsPartOfAttribute = _returnState is HtmlState.AttributeValueDoubleQuoted
                         or HtmlState.AttributeValueSingleQuoted
