@@ -3,26 +3,30 @@
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkApplicationWindow" id="BrowserWindow">
+    <property name="can-focus">False</property>
     <property name="title">Tanuki</property>
     <property name="default-width">900</property>
     <property name="default-height">600</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
+        <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkToolbar">
             <property name="visible">True</property>
+            <property name="can-focus">False</property>
             <property name="toolbar-style">icons</property>
             <property name="icon_size">2</property>
             <child>
               <object class="GtkToolButton" id="HistoryBack">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="tooltip-text" translatable="yes">Go Back</property>
+                <property name="tooltip-text" translatable="yes">Go back (Alt+Left Arrow)</property>
                 <property name="label" translatable="yes">Back</property>
                 <property name="use-underline">True</property>
                 <property name="icon-name">go-previous</property>
+                <accelerator key="Left" signal="clicked" modifiers="GDK_MOD1_MASK"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -33,10 +37,11 @@
               <object class="GtkToolButton" id="HistoryForward">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="tooltip-text" translatable="yes">Go Forward</property>
+                <property name="tooltip-text" translatable="yes">Go forward (Alt+Right Arrow)</property>
                 <property name="label" translatable="yes">Forward</property>
                 <property name="use-underline">True</property>
                 <property name="icon-name">go-next</property>
+                <accelerator key="Right" signal="clicked" modifiers="GDK_MOD1_MASK"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -47,10 +52,11 @@
               <object class="GtkToolButton" id="PageReload">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="tooltip-text" translatable="yes">Reload Page</property>
+                <property name="tooltip-text" translatable="yes">Reload page (Ctrl+R)</property>
                 <property name="label" translatable="yes">toolbutton</property>
                 <property name="use-underline">True</property>
                 <property name="icon-name">view-refresh</property>
+                <accelerator key="r" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
               </object>
               <packing>
                 <property name="expand">False</property>
