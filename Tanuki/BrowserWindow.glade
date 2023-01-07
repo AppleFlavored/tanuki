@@ -90,7 +90,6 @@
           <object class="GtkScrolledWindow" id="PageContainer">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
-            <property name="vscrollbar-policy">always</property>
             <property name="shadow-type">in</property>
             <child>
               <placeholder/>
