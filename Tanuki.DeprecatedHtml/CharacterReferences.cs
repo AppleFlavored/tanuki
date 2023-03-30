@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Tanuki.Html;
+namespace Tanuki.DeprecatedHtml;
 
 internal static class CharacterReferences
 {

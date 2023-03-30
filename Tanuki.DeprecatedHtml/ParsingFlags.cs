@@ -1,4 +1,4 @@
-namespace Tanuki.Html;
+namespace Tanuki.DeprecatedHtml;
 
 [Flags]
 public enum ParsingFlags : byte
