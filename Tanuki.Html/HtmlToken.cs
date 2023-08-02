@@ -1,7 +1,7 @@
 using System.Text;
 using Attribute = Tanuki.Dom.Attribute;
 
-namespace Tanuki.DeprecatedHtml;
+namespace Tanuki.Html;
 
 public abstract class HtmlToken
 {

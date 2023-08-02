@@ -3,13 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki.DeprecatedHtml", "Tanuki.DeprecatedHtml\Tanuki.DeprecatedHtml.csproj", "{59D478D2-4B53-4EA5-B063-4A84AE2EC020}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki.Html", "Tanuki.Html\Tanuki.Html.csproj", "{59D478D2-4B53-4EA5-B063-4A84AE2EC020}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki", "Tanuki\Tanuki.csproj", "{DE38A0D9-1DFD-4088-9141-3012E62FFA70}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki.Dom", "Tanuki.Dom\Tanuki.Dom.csproj", "{1EFE67FB-C489-465E-86DA-BE2D196023B1}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tanuki.Html", "Tanuki.Html\Tanuki.Html.csproj", "{C137DE75-56E9-46E8-B152-0B117726955D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,9 +30,5 @@ Global
 		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1EFE67FB-C489-465E-86DA-BE2D196023B1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C137DE75-56E9-46E8-B152-0B117726955D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C137DE75-56E9-46E8-B152-0B117726955D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C137DE75-56E9-46E8-B152-0B117726955D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C137DE75-56E9-46E8-B152-0B117726955D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
